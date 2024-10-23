@@ -53,161 +53,205 @@
       copy:
         dest: /home/ubuntu/mobile_store_app/Program.cs
         content: |
-          using System;
-          using System.Collections.Generic;
-          using Microsoft.AspNetCore.Hosting;
-          using Microsoft.Extensions.Hosting;
-          using Microsoft.AspNetCore.Builder;
-          using Microsoft.Extensions.DependencyInjection;
+        using System;
+using System.Collections.Generic;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
 
-          namespace MobileStoreApp
-          {
-              public class Program
-              {
-                  public static void Main(string[] args)
-                  {
-                      CreateHostBuilder(args).Build().Run();
-                  }
+namespace MobileStoreApp
+{
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            CreateHostBuilder(args).Build().Run();
+        }
 
-                  public static IHostBuilder CreateHostBuilder(string[] args) =>
-                      Host.CreateDefaultBuilder(args)
-                          .ConfigureWebHostDefaults(webBuilder =>
-                          {
-                              webBuilder.UseStartup<Startup>();
-                          });
-              }
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+                });
+    }
 
-              public class Startup
-              {
-                  public void ConfigureServices(IServiceCollection services)
-                  {
-                      services.AddControllers();
-                  }
+    public class Startup
+    {
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddControllers();
+        }
 
-                  public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
-                  {
-                      if (env.IsDevelopment())
-                      {
-                          app.UseDeveloperExceptionPage();
-                      }
-                      else
-                      {
-                          app.UseExceptionHandler("/Home/Error");
-                          app.UseHsts();
-                      }
-                      app.UseHttpsRedirection();
-                      app.UseRouting();
-                      app.UseAuthorization();
-                      app.UseEndpoints(endpoints =>
-                      {
-                          endpoints.MapControllers();
-                      });
-                  }
-              }
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        {
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+            else
+            {
+                app.UseExceptionHandler("/Home/Error");
+                app.UseHsts();
+            }
+            app.UseHttpsRedirection();
+            app.UseRouting();
+            app.UseAuthorization();
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
+        }
+    }
 
-              // Código con malas prácticas y código espagueti
-              public class Mobile
-              {
-                  public string Model;
-                  public string Brand;
-                  public double Price;
-                  public List<string> Features = new List<string>();
+    // Clase Mobile con encapsulamiento
+    public class Mobile
+    {
+        public string Model { get; set; }
+        public string Brand { get; set; }
+        public double Price { get; set; }
+        public List<string> Features { get; } = new List<string>();
 
-                  public void PrintDetails()
-                  {
-                      Console.WriteLine($"Model: {Model}, Brand: {Brand}, Price: {Price:C}");
-                      Console.WriteLine("Features:");
-                      foreach (var feature in Features)
-                      {
-                          Console.WriteLine($"- {feature}");
-                      }
-                  }
-              }
+        public void PrintDetails()
+        {
+            Console.WriteLine($"Model: {Model}, Brand: {Brand}, Price: {Price:C}");
+            Console.WriteLine("Features:");
+            foreach (var feature in Features)
+            {
+                Console.WriteLine($"- {feature}");
+            }
+        }
+    }
 
-              public class StoreManager
-              {
-                  public List<Mobile> mobiles = new List<Mobile>();
-                  public void AddMobile(string model, string brand, double price, List<string> features)
-                  {
-                      var mobile = new Mobile();
-                      mobile.Model = model;
-                      mobile.Brand = brand;
-                      mobile.Price = price;
-                      mobile.Features = features;
-                      mobiles.Add(mobile);
-                      mobile.PrintDetails();
-                  }
+    public class StoreManager
+    {
+        private readonly List<Mobile> mobiles = new List<Mobile>();
 
-                  public void PrintAllMobiles()
-                  {
-                      foreach (var mobile in mobiles)
-                      {
-                          mobile.PrintDetails();
-                      }
-                  }
+        // Método de fábrica para crear móviles
+        public Mobile CreateMobile(string model, string brand, double price, List<string> features)
+        {
+            return new Mobile
+            {
+                Model = model,
+                Brand = brand,
+                Price = price,
+                Features = features
+            };
+        }
 
-                  // Método largo y complejo sin modularizar
-                  public void ProcessSale(string model, int quantity)
-                  {
-                      Mobile mobile = null;
-                      foreach (var m in mobiles)
-                      {
-                          if (m.Model == model)
-                          {
-                              mobile = m;
-                              break;
-                          }
-                      }
-                      if (mobile != null)
-                      {
-                          Console.WriteLine($"Processing sale for {quantity} units of {mobile.Model}");
-                          // Código adicional para procesar la venta...
-                      }
-                      else
-                      {
-                          Console.WriteLine("Mobile not found");
-                      }
-                  }
-              }
+        public void AddMobile(string model, string brand, double price, List<string> features)
+        {
+            var mobile = CreateMobile(model, brand, price, features);
+            mobiles.Add(mobile);
+            mobile.PrintDetails();
+        }
 
-              // Clase con responsabilidades mixtas (violación del principio de responsabilidad única)
-              public class InventoryAndBilling
-              {
-                  private List<Mobile> inventory = new List<Mobile>();
-                  public void AddToInventory(Mobile mobile)
-                  {
-                      inventory.Add(mobile);
-                  }
+        public void PrintAllMobiles()
+        {
+            foreach (var mobile in mobiles)
+            {
+                mobile.PrintDetails();
+            }
+        }
 
-                  public void GenerateBill(Mobile mobile, int quantity)
-                  {
-                      double total = mobile.Price * quantity;
-                      Console.WriteLine($"Bill: {mobile.Model} x{quantity} = {total:C}");
-                  }
-              }
+        // Métodos separados para el procesamiento de la venta
+        public void ProcessSale(string model, int quantity)
+        {
+            var mobile = FindMobileByModel(model);
+            if (mobile != null)
+            {
+                Console.WriteLine($"Processing sale for {quantity} units of {mobile.Model}");
+                // Código adicional para procesar la venta...
+            }
+            else
+            {
+                Console.WriteLine("Mobile not found");
+            }
+        }
 
-              // Código no reutilizable y acoplado
-              public class Promotion
-              {
-                  public void ApplyDiscount(Mobile mobile)
-                  {
-                      if (mobile.Brand == "BrandX")
-                      {
-                          mobile.Price *= 0.9;
-                          Console.WriteLine($"Discount applied to {mobile.Model}. New price: {mobile.Price:C}");
-                      }
-                      else if (mobile.Brand == "BrandY")
-                      {
-                          mobile.Price *= 0.85;
-                          Console.WriteLine($"Discount applied to {mobile.Model}. New price: {mobile.Price:C}");
-                      }
-                      else
-                      {
-                          Console.WriteLine("No discount available for this brand.");
-                      }
-                  }
-              }
-          }
+        private Mobile FindMobileByModel(string model)
+        {
+            return mobiles.Find(m => m.Model == model);
+        }
+    }
+
+    // Clases separadas para inventario y facturación
+    public class InventoryManager
+    {
+        private readonly List<Mobile> inventory = new List<Mobile>();
+
+        public void AddToInventory(Mobile mobile)
+        {
+            inventory.Add(mobile);
+        }
+    }
+
+    public class BillingManager
+    {
+        public void GenerateBill(Mobile mobile, int quantity)
+        {
+            double total = mobile.Price * quantity;
+            Console.WriteLine($"Bill: {mobile.Model} x{quantity} = {total:C}");
+        }
+    }
+
+    // Patrón Strategy para aplicar descuentos
+    public interface IDiscountStrategy
+    {
+        void ApplyDiscount(Mobile mobile);
+    }
+
+    public class BrandXDiscount : IDiscountStrategy
+    {
+        public void ApplyDiscount(Mobile mobile)
+        {
+            mobile.Price *= 0.9;
+            Console.WriteLine($"Discount applied to {mobile.Model}. New price: {mobile.Price:C}");
+        }
+    }
+
+    public class BrandYDiscount : IDiscountStrategy
+    {
+        public void ApplyDiscount(Mobile mobile)
+        {
+            mobile.Price *= 0.85;
+            Console.WriteLine($"Discount applied to {mobile.Model}. New price: {mobile.Price:C}");
+        }
+    }
+
+    public class NoDiscount : IDiscountStrategy
+    {
+        public void ApplyDiscount(Mobile mobile)
+        {
+            Console.WriteLine("No discount available for this brand.");
+        }
+    }
+
+    public class Promotion
+    {
+        public void ApplyDiscount(Mobile mobile)
+        {
+            IDiscountStrategy discountStrategy;
+
+            switch (mobile.Brand)
+            {
+                case "BrandX":
+                    discountStrategy = new BrandXDiscount();
+                    break;
+                case "BrandY":
+                    discountStrategy = new BrandYDiscount();
+                    break;
+                default:
+                    discountStrategy = new NoDiscount();
+                    break;
+            }
+
+            discountStrategy.ApplyDiscount(mobile);
+        }
+    }
+}
+
 
     - name: Construir la aplicación de tienda de celulares
       command: dotnet build /home/ubuntu/mobile_store_app/mobile_store_app.csproj
