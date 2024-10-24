@@ -42,14 +42,12 @@
         dest: /home/ubuntu/mobile_store_app/mobile_store_app.csproj
         content: |
           <Project Sdk="Microsoft.NET.Sdk.Web">
-
           <PropertyGroup>
               <TargetFramework>net8.0</TargetFramework>
           </PropertyGroup>
-
           </Project>
 
-       - name: Crear archivo de código fuente
+    - name: Crear archivo de código fuente
       copy:
         dest: /home/ubuntu/mobile_store_app/Program.cs
         content: |
@@ -251,8 +249,6 @@
                   }
               }
           }
-
-
 
     - name: Construir la aplicación de tienda de celulares
       command: dotnet build /home/ubuntu/mobile_store_app/mobile_store_app.csproj
