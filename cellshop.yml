@@ -1,7 +1,7 @@
 ---
-- name: Instalar .NET Core 8 y configurar la aplicación de tienda de celulares
-  hosts: localhost
-  gather_facts: no
+- name: Instalar .NET Core 8 y configurar la aplicación de cell shop
+  hosts: 127.0.0.1
+  connection: local
   become: yes
   tasks:
     - name: Actualizar el sistema
@@ -9,7 +9,7 @@
         update_cache: yes
         upgrade: dist
 
-    - name: Instalar dependencias necesarias
+    - name: Instalando las dependencias
       apt:
         name:
           - apt-transport-https
@@ -18,57 +18,55 @@
           - software-properties-common
         state: present
 
-    - name: Verificar y eliminar entrada malformada en fuentes de APT
-      command: >
-        grep -q 'packages.microsoft.com' /etc/apt/sources.list.d/packages_microsoft_com_repos_ubuntu_noble.list && 
-        rm /etc/apt/sources.list.d/packages_microsoft_com_repos_ubuntu_noble.list || true
-      ignore_errors: yes
+    - name: Descargar el paquete de repositorio de Microsoft para Ubuntu 22.04 LTS
+      get_url:
+        url: https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
+        dest: /tmp/packages-microsoft-prod.deb
 
-    - name: Obtener el nombre de la versión de Ubuntu
-      command: lsb_release -cs
-      register: ubuntu_version
+    - name: Instalar el paquete de repositorio de Microsoft
+      command: dpkg -i /tmp/packages-microsoft-prod.deb
 
-    - name: Agregar el repositorio de Microsoft
-      apt_repository:
-        repo: "deb [arch=amd64] https://packages.microsoft.com/repos/ubuntu/{{ ubuntu_version.stdout }} main"
-        state: present
-
-    - name: Importar la clave de Microsoft
-      apt_key:
-        url: https://packages.microsoft.com/keys/microsoft.asc
-        state: present
+    - name: Actualizar el caché de apt después de agregar el repositorio
+      apt:
+        update_cache: yes
 
     - name: Instalar .NET SDK
       apt:
         name: dotnet-sdk-8.0
         state: present
 
-    - name: Crear directorio para la aplicación
+    - name: Crear directorio para la aplicación del cell
       file:
-        path: /home/ubuntu/mobile_store_app
+        path: /home/ubuntu/cell
         state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
 
     - name: Crear archivo del proyecto
       copy:
-        dest: /home/ubuntu/mobile_store_app/mobile_store_app.csproj
+        dest: /home/ubuntu/cell/cell.csproj
         content: |
           <Project Sdk="Microsoft.NET.Sdk.Web">
-          <PropertyGroup>
+            <PropertyGroup>
               <TargetFramework>net8.0</TargetFramework>
-          </PropertyGroup>
+            </PropertyGroup>
           </Project>
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
 
-    - name: Crear archivo de código fuente
+    - name: Crear archivo de código fuente Program.cs
       copy:
-        dest: /home/ubuntu/mobile_store_app/Program.cs
+        dest: /home/ubuntu/cell/Program.cs
         content: |
-          using System;
+          using System; 
           using System.Collections.Generic;
           using Microsoft.AspNetCore.Hosting;
           using Microsoft.Extensions.Hosting;
           using Microsoft.AspNetCore.Builder;
           using Microsoft.Extensions.DependencyInjection;
-
+          
           namespace MobileStoreApp
           {
               public class Program
@@ -77,7 +75,7 @@
                   {
                       CreateHostBuilder(args).Build().Run();
                   }
-
+          
                   public static IHostBuilder CreateHostBuilder(string[] args) =>
                       Host.CreateDefaultBuilder(args)
                           .ConfigureWebHostDefaults(webBuilder =>
@@ -85,14 +83,14 @@
                               webBuilder.UseStartup<Startup>();
                           });
               }
-
+          
               public class Startup
               {
                   public void ConfigureServices(IServiceCollection services)
                   {
                       services.AddControllers();
                   }
-
+          
                   public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
                   {
                       if (env.IsDevelopment())
@@ -113,15 +111,43 @@
                       });
                   }
               }
-
-              // Clase Mobile con encapsulamiento
+          
+              // Punto numero 1: Uso de campos públicos en la clase Mobile, lo que rompe el encapsulamiento y viola el principio de ocultación de datos
+              // Se soluciono al encapsular los campos utilizando propiedades con métodos get y set
+              // Clase Mobile mejorada con encapsulamiento
               public class Mobile
               {
-                  public string Model { get; set; }
-                  public string Brand { get; set; }
-                  public double Price { get; set; }
-                  public List<string> Features { get; } = new List<string>();
-
+                  private string _model;
+                  private string _brand;
+                  private double _price;
+                  private List<string> _features = new List<string>();
+          
+                  // Punto numero 1 aplicado aqui
+                  // Propiedades con métodos get y set
+                  public string Model
+                  {
+                      get { return _model; }
+                      set { _model = value; }
+                  }
+          
+                  public string Brand
+                  {
+                      get { return _brand; }
+                      set { _brand = value; }
+                  }
+          
+                  public double Price
+                  {
+                      get { return _price; }
+                      set { _price = value; }
+                  }
+          
+                  public List<string> Features
+                  {
+                      get { return _features; }
+                      set { _features = value; }
+                  }
+          
                   public void PrintDetails()
                   {
                       Console.WriteLine($"Model: {Model}, Brand: {Brand}, Price: {Price:C}");
@@ -132,12 +158,20 @@
                       }
                   }
               }
-
-              public class StoreManager
+          
+              // Punto 5: Creación directa de objetos Mobile en StoreManager, lo que dificulta la extensión y el mantenimiento.
+              // Solución: Utilizar el patrón Factory Method para encapsular la creación de objetos Mobile.
+              // Usando: Factory Method Pattern
+          
+              // Interfaz IMobileFactory para el Factory Method
+              public interface IMobileFactory
               {
-                  private readonly List<Mobile> mobiles = new List<Mobile>();
-
-                  // Método de fábrica para crear móviles
+                  Mobile CreateMobile(string model, string brand, double price, List<string> features);
+              }
+          
+              // Implementación de la fábrica concreta
+              public class MobileFactory : IMobileFactory
+              {
                   public Mobile CreateMobile(string model, string brand, double price, List<string> features)
                   {
                       return new Mobile
@@ -148,14 +182,77 @@
                           Features = features
                       };
                   }
-
-                  public void AddMobile(string model, string brand, double price, List<string> features)
+              }
+          
+              // Punto 6: Necesidad de asegurar una única instancia de StoreManager para manejar el inventario de manera consistente.
+              // Solución: Aplicar el patrón Singleton en la clase StoreManager para garantizar una única instancia.
+              // Usando: Singleton Pattern
+          
+              public class StoreManager
+              {
+                  private static StoreManager _instance = null;
+                  private static readonly object _lock = new object();
+                  public List<Mobile> mobiles = new List<Mobile>();
+                  private readonly IMobileFactory _mobileFactory;
+          
+                  // Constructor privado para evitar instanciación directa
+                  private StoreManager(IMobileFactory mobileFactory)
                   {
-                      var mobile = CreateMobile(model, brand, price, features);
-                      mobiles.Add(mobile);
-                      mobile.PrintDetails();
+                      _mobileFactory = mobileFactory;
                   }
 
+                  private List<IObserver> observers = new List<IObserver>();
+
+                  // Implementación de métodos de la interfaz ISubject para gestionar observadores
+                  public void Subscribe(IObserver observer)
+                  {
+                      observers.Add(observer);
+                  }
+              
+                  public void Unsubscribe(IObserver observer)
+                  {
+                      observers.Remove(observer);
+                  }
+              
+                  public void NotifyObservers()
+                  {
+                      foreach (var observer in observers)
+                      {
+                          observer.Update();
+                      }
+                  }
+          
+                  // Método estático para obtener la única instancia de StoreManager
+                  public static StoreManager GetInstance(IMobileFactory mobileFactory)
+                  {
+                      // Implementación del patrón Singleton con doble verificación de bloqueo
+                      if (_instance == null)
+                      {
+                          lock (_lock)
+                          {
+                              if (_instance == null)
+                              {
+                                  _instance = new StoreManager(mobileFactory);
+                              }
+                          }
+                      }
+                      return _instance;
+                  }
+          
+                  // Uso del Factory Method para crear un nuevo Mobile
+                  public void AddMobile(string model, string brand, double price, List<string> features)
+                  {
+                      var mobile = _mobileFactory.CreateMobile(model, brand, price, features);
+                      mobiles.Add(mobile);
+                      mobile.PrintDetails();
+                      // Punto 7: Falta de notificación a otros componentes cuando cambia el inventario, causando inconsistencias.
+                      // Solución: Implementar el patrón Observer para que los componentes interesados puedan suscribirse y recibir actualizaciones.
+                      // Se implementaron los métodos Subscribe, Unsubscribe y NotifyObservers en StoreManager,
+                      // y se agregó la notificación al agregar un móvil mediante el método NotifyObservers.
+
+                      NotifyObservers();  // Notificar a los observadores sobre el cambio en el inventario
+                  }
+          
                   public void PrintAllMobiles()
                   {
                       foreach (var mobile in mobiles)
@@ -163,55 +260,112 @@
                           mobile.PrintDetails();
                       }
                   }
-
-                  // Métodos separados para el procesamiento de la venta
+          
+                  // Numero 2: Método ProcessSale en StoreManager es largo y tiene múltiples responsabilidades, lo que dificulta el mantenimiento
+                  // Solución: Dividir el método en varios métodos más pequeños y específicos, cada uno con una única responsabilidad
+                  // Usando: Single Responsibility Principle (SRP)
+                  // 1. Buscar el móvil
+                  // 2. Verificar si el móvil fue encontrado
+                  // 3. Procesar la venta
                   public void ProcessSale(string model, int quantity)
                   {
-                      var mobile = FindMobileByModel(model);
+                      Mobile mobile = FindMobileByModel(model);
                       if (mobile != null)
                       {
-                          Console.WriteLine($"Processing sale for {quantity} units of {mobile.Model}");
-                          // Código adicional para procesar la venta...
+                          ProcessSaleForMobile(mobile, quantity);
                       }
                       else
                       {
-                          Console.WriteLine("Mobile not found");
+                          HandleMobileNotFound(model);
                       }
                   }
-
+          
+                  // Método para buscar un móvil por su modelo
                   private Mobile FindMobileByModel(string model)
                   {
-                      return mobiles.Find(m => m.Model == model);
+                      foreach (var mobile in mobiles)
+                      {
+                          if (mobile.Model == model)
+                          {
+                              return mobile;
+                          }
+                      }
+                      return null;
+                  }
+          
+                  // Método para procesar la venta si el móvil fue encontrado
+                  private void ProcessSaleForMobile(Mobile mobile, int quantity)
+                  {
+                      Console.WriteLine($"Processing sale for {quantity} units of {mobile.Model}");
+                      // Código adicional para procesar la venta...
+                  }
+          
+                  // Método para manejar el caso de móvil no encontrado
+                  private void HandleMobileNotFound(string model)
+                  {
+                      Console.WriteLine($"Mobile {model} not found");
                   }
               }
-
-              // Clases separadas para inventario y facturación
+              
+              // Interfaz IObserver que define cómo los componentes observadores recibirán actualizaciones
+              public interface IObserver
+              {
+                  void Update();
+              }
+          
+              // Interfaz ISubject que define cómo el sujeto maneja suscriptores
+              public interface ISubject
+              {
+                  void Subscribe(IObserver observer);
+                  void Unsubscribe(IObserver observer);
+                  void NotifyObservers();
+              }
+              
+              // Punto numero 3: La clase InventoryAndBilling mezcla responsabilidades de inventario y facturación, violando el principio de responsabilidad única
+              // Solución: Separar la clase en dos clases distintas: InventoryManager y BillingManager
+              // Usando: Single Responsibility Principle (SRP)
+          
               public class InventoryManager
               {
-                  private readonly List<Mobile> inventory = new List<Mobile>();
-
+                  private List<Mobile> inventory = new List<Mobile>();
+          
+                  // Responsabilidad única: Gestionar el inventario
                   public void AddToInventory(Mobile mobile)
                   {
                       inventory.Add(mobile);
+                      Console.WriteLine($"Mobile {mobile.Model} added to inventory.");
+                  }
+          
+                  public void PrintInventory()
+                  {
+                      Console.WriteLine("Current inventory:");
+                      foreach (var mobile in inventory)
+                      {
+                          mobile.PrintDetails();
+                      }
                   }
               }
-
+          
               public class BillingManager
               {
+                  // Responsabilidad única: Gestionar la facturación
                   public void GenerateBill(Mobile mobile, int quantity)
                   {
                       double total = mobile.Price * quantity;
                       Console.WriteLine($"Bill: {mobile.Model} x{quantity} = {total:C}");
                   }
               }
-
-              // Patrón Strategy para aplicar descuentos
+          
+              // Punto 4: Código acoplado en la clase Promotion, con lógica específica para cada marca dentro del método ApplyDiscount.
+              // Implementar el patrón Strategy creando una interfaz IDiscountStrategy y clases concretas para cada estrategia de descuento.
+              // Interfaz IDiscountStrategy para aplicar el patrón Strategy
               public interface IDiscountStrategy
               {
                   void ApplyDiscount(Mobile mobile);
               }
-
-              public class BrandXDiscount : IDiscountStrategy
+          
+              // Estrategia de descuento para BrandX
+              public class BrandXDiscountStrategy : IDiscountStrategy
               {
                   public void ApplyDiscount(Mobile mobile)
                   {
@@ -219,8 +373,9 @@
                       Console.WriteLine($"Discount applied to {mobile.Model}. New price: {mobile.Price:C}");
                   }
               }
-
-              public class BrandYDiscount : IDiscountStrategy
+          
+              // Estrategia de descuento para BrandY
+              public class BrandYDiscountStrategy : IDiscountStrategy
               {
                   public void ApplyDiscount(Mobile mobile)
                   {
@@ -228,47 +383,72 @@
                       Console.WriteLine($"Discount applied to {mobile.Model}. New price: {mobile.Price:C}");
                   }
               }
-
-              public class NoDiscount : IDiscountStrategy
+          
+              // Estrategia de descuento predeterminada cuando no hay descuentos disponibles
+              public class NoDiscountStrategy : IDiscountStrategy
               {
                   public void ApplyDiscount(Mobile mobile)
                   {
                       Console.WriteLine("No discount available for this brand.");
                   }
               }
-
+          
+              // Clase Promotion que utiliza el patrón Strategy para aplicar descuentos
               public class Promotion
               {
+                  private IDiscountStrategy _discountStrategy;
+          
+                  // Constructor que permite establecer una estrategia de descuento
+                  public Promotion(IDiscountStrategy discountStrategy)
+                  {
+                      _discountStrategy = discountStrategy;
+                  }
+          
+                  // Método para aplicar el descuento
                   public void ApplyDiscount(Mobile mobile)
                   {
-                      IDiscountStrategy discountStrategy;
-
-                      switch (mobile.Brand)
-                      {
-                          case "BrandX":
-                              discountStrategy = new BrandXDiscount();
-                              break;
-                          case "BrandY":
-                              discountStrategy = new BrandYDiscount();
-                              break;
-                          default:
-                              discountStrategy = new NoDiscount();
-                              break;
-                      }
-
-                      discountStrategy.ApplyDiscount(mobile);
+                      _discountStrategy.ApplyDiscount(mobile);
                   }
               }
           }
 
-    - name: Construir la aplicación de tienda de celulares
-      command: dotnet build /home/ubuntu/mobile_store_app/mobile_store_app.csproj
-      args:
-        chdir: /home/ubuntu/mobile_store_app
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
 
-    - name: Ejecutar la aplicación
-      command: dotnet run --urls "http://0.0.0.0:5000"
+    - name: Construir la aplicación de cell
+      command: dotnet build
       args:
-        chdir: /home/ubuntu/mobile_store_app
-      async: 10  # Ejecutar el comando de forma asíncrona
-      poll: 0  # No esperar la finalización del comando
+        chdir: /home/ubuntu/cell
+      become_user: ubuntu
+  
+    - name: Crear archivo de servicio systemd para la aplicación
+      copy:
+        dest: /etc/systemd/system/cell.service
+        content: |
+          [Unit]
+          Description=Cell Shop Application
+          After=network.target
+
+          [Service]
+          WorkingDirectory=/home/ubuntu/cell
+          ExecStart=/usr/bin/dotnet /home/ubuntu/cell/bin/Debug/net8.0/cell.dll --urls "http://0.0.0.0:5000"
+          Restart=always
+          RestartSec=10
+          SyslogIdentifier=cell-app
+          User=ubuntu
+          Environment=ASPNETCORE_ENVIRONMENT=Production
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+
+
+    - name: Recargar systemd
+      command: systemctl daemon-reload
+
+    - name: Iniciar y habilitar la aplicación cell shop
+      systemd:
+        name: cell.service
+        state: started
+        enabled: yes
