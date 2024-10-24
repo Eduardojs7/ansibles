@@ -1,6 +1,7 @@
 ---
 - name: Instalar .NET Core 8 y configurar la aplicación de tienda de celulares
-  hosts: localhost  # Ejecución en la instancia local
+  hosts: localhost
+  gather_facts: no
   become: yes
   tasks:
     - name: Actualizar el sistema
@@ -17,9 +18,13 @@
           - software-properties-common
         state: present
 
+    - name: Obtener el nombre de la versión de Ubuntu
+      command: lsb_release -cs
+      register: ubuntu_version
+
     - name: Agregar el repositorio de Microsoft
       apt_repository:
-        repo: "deb [arch=amd64] https://packages.microsoft.com/repos/ubuntu/ $(lsb_release -cs) main"
+        repo: "deb [arch=amd64] https://packages.microsoft.com/repos/ubuntu/{{ ubuntu_version.stdout }} main"
         state: present
 
     - name: Importar la clave de Microsoft
