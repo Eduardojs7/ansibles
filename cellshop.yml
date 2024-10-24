@@ -18,6 +18,12 @@
           - software-properties-common
         state: present
 
+    - name: Verificar y eliminar entrada malformada en fuentes de APT
+      command: >
+        grep -q 'packages.microsoft.com' /etc/apt/sources.list.d/packages_microsoft_com_repos_ubuntu_noble.list && 
+        rm /etc/apt/sources.list.d/packages_microsoft_com_repos_ubuntu_noble.list || true
+      ignore_errors: yes
+
     - name: Obtener el nombre de la versión de Ubuntu
       command: lsb_release -cs
       register: ubuntu_version
