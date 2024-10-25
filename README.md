@@ -1,9 +1,10 @@
-# ansibles
+# Ansibles
 
-# 05-hotel
-https://asciinema.org/a/t4Lu4Y7C3dZhJFgOSxVZCnEDV
+## 05-hotel
+[Ver video](https://asciinema.org/a/t4Lu4Y7C3dZhJFgOSxVZCnEDV)
 
-# 07-CelularShop
-https://asciinema.org/a/SE2ku24xt0FqibPYqGXguOXvd
-# 08-musicstore
-https://asciinema.org/a/eHicbxne2ubSZfPudl6XfKxqB
+## 07-CelularShop
+[Ver video](https://asciinema.org/a/SE2ku24xt0FqibPYqGXguOXvd)
+
+## 08-musicstore
+[Ver video](https://asciinema.org/a/eHicbxne2ubSZfPudl6XfKxqB)
