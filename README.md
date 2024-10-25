@@ -2,7 +2,7 @@
 
 ## 05-hotel
 
-[Ver video](https://asciinema.org/a/t4Lu4Y7C3dZhJFgOSxVZCnEDV)
+[![asciicast](https://asciinema.org/a/t4Lu4Y7C3dZhJFgOSxVZCnEDV.svg)](https://asciinema.org/a/t4Lu4Y7C3dZhJFgOSxVZCnEDV)
 
 ## 07-CelularShop
 
