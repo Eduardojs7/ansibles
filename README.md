@@ -9,4 +9,4 @@
 
 ## 08-musicstore
 
-[Ver video](https://asciinema.org/a/eHicbxne2ubSZfPudl6XfKxqB)
+[![asciicast](https://asciinema.org/a/eHicbxne2ubSZfPudl6XfKxqB.svg)](https://asciinema.org/a/eHicbxne2ubSZfPudl6XfKxqB)
