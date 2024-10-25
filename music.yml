@@ -1,0 +1,174 @@
+- name: Instalar .NET Core 8 y configurar la aplicación de música
+  hosts: 127.0.0.1
+  connection: local
+  become: yes
+  tasks:
+    - name: Actualizar el sistema
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Instalando las dependencias
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    - name: Descargar el paquete de repositorio de Microsoft para Ubuntu 22.04 LTS
+      get_url:
+        url: https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
+        dest: /tmp/packages-microsoft-prod.deb
+
+    - name: Instalar el paquete de repositorio de Microsoft
+      command: dpkg -i /tmp/packages-microsoft-prod.deb
+
+    - name: Actualizar el caché de apt después de agregar el repositorio
+      apt:
+        update_cache: yes
+
+    - name: Instalar .NET SDK
+      apt:
+        name: dotnet-sdk-8.0
+        state: present
+
+    - name: Crear directorio para la aplicación de música
+      file:
+        path: /home/ubuntu/musica
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Crear archivo del proyecto
+      copy:
+        dest: /home/ubuntu/musica/musica.csproj
+        content: |
+          <Project Sdk="Microsoft.NET.Sdk.Web">
+            <PropertyGroup>
+              <TargetFramework>net8.0</TargetFramework>
+            </PropertyGroup>
+          </Project>
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Crear archivo de código fuente Program.cs
+      copy:
+        dest: /home/ubuntu/musica/Program.cs
+        content: |
+          using System;
+          using System.Collections.Generic;
+
+          // Interfaz común para todos los instrumentos
+          public interface IInstrumento
+          {
+              void Tocar();
+          }
+
+          // Clases concretas de instrumentos
+          public class Guitarra : IInstrumento
+          {
+              public void Tocar()
+              {
+                  Console.WriteLine("Tocando una guitarra.");
+              }
+          }
+
+          public class Piano : IInstrumento
+          {
+              public void Tocar()
+              {
+                  Console.WriteLine("Tocando un piano.");
+              }
+          }
+
+          // Clase para crear instancias de instrumentos
+          public static class InstrumentoFactory
+          {
+              private static readonly Dictionary<string, Func<IInstrumento>> _instrumentos = new Dictionary<string, Func<IInstrumento>>
+              {
+                  { "Guitarra", () => new Guitarra() },
+                  { "Piano", () => new Piano() }
+              };
+
+              public static IInstrumento CrearInstrumento(string tipo)
+              {
+                  if (_instrumentos.TryGetValue(tipo, out var crearInstrumento))
+                  {
+                      return crearInstrumento();
+                  }
+                  
+                  throw new ArgumentException("Instrumento no disponible.");
+              }
+          }
+
+          // Tienda de música desacoplada
+          public class TiendaDeMusica
+          {
+              public void TocarInstrumento(string tipoDeInstrumento)
+              {
+                  try
+                  {
+                      var instrumento = InstrumentoFactory.CrearInstrumento(tipoDeInstrumento);
+                      instrumento.Tocar();
+                  }
+                  catch (ArgumentException ex)
+                  {
+                      Console.WriteLine(ex.Message);
+                  }
+              }
+          }
+
+          // Ejemplo de uso
+          public class Programa
+          {
+              public static void Main()
+              {
+                  var tienda = new TiendaDeMusica();
+                  tienda.TocarInstrumento("Guitarra");
+                  tienda.TocarInstrumento("Piano");
+                  tienda.TocarInstrumento("Batería"); // Esto mostrará "Instrumento no disponible."
+              }
+          }
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Construir la aplicación de música
+      command: dotnet build
+      args:
+        chdir: /home/ubuntu/musica
+      become_user: ubuntu
+
+    - name: Crear archivo de servicio systemd para la aplicación
+      copy:
+        dest: /etc/systemd/system/musica.service
+        content: |
+          [Unit]
+          Description=Aplicación de Música
+          After=network.target
+
+          [Service]
+          WorkingDirectory=/home/ubuntu/musica
+          ExecStart=/usr/bin/dotnet /home/ubuntu/musica/bin/Debug/net8.0/musica.dll --urls "http://0.0.0.0:5000"
+          Restart=always
+          RestartSec=10
+          SyslogIdentifier=musica-app
+          User=ubuntu
+          Environment=ASPNETCORE_ENVIRONMENT=Production
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+
+    - name: Recargar systemd
+      command: systemctl daemon-reload
+
+    - name: Iniciar y habilitar la aplicación de música
+      systemd:
+        name: musica.service
+        state: started
+        enabled: yes
